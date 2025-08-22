@@ -1,0 +1,397 @@
+# EyeMotion Production Monitoring Configuration
+# Comprehensive monitoring for eyemotionai.com
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eyemotion-monitoring
+  namespace: production
+data:
+  # Website Health Monitoring
+  website-health.yaml: |
+    checks:
+      - name: "Main Website"
+        url: "https://eyemotionai.com"
+        method: GET
+        expected_status: 200
+        timeout: 10s
+        interval: 2m
+        retries: 3
+        tags:
+          - production
+          - website
+          - critical
+        
+      - name: "WWW Redirect"
+        url: "https://www.eyemotionai.com"
+        method: GET
+        expected_status: 200
+        timeout: 5s
+        interval: 5m
+        follow_redirects: true
+        tags:
+          - production
+          - redirect
+
+      - name: "Health Endpoint"
+        url: "https://eyemotionai.com/health"
+        method: GET
+        expected_status: 200
+        timeout: 10s
+        interval: 1m
+        expected_content: '"status":"healthy"'
+        tags:
+          - production
+          - health
+          - critical
+
+  # API Monitoring
+  api-health.yaml: |
+    checks:
+      - name: "Supabase API Health"
+        url: "${SUPABASE_URL}/rest/v1/"
+        method: GET
+        headers:
+          apikey: "${SUPABASE_ANON_KEY}"
+          Authorization: "Bearer ${SUPABASE_ANON_KEY}"
+        expected_status: 200
+        timeout: 15s
+        interval: 2m
+        tags:
+          - production
+          - api
+          - database
+          - critical
+
+      - name: "Edge Functions Health"
+        url: "${SUPABASE_URL}/functions/v1/make-server-7dc8476e/health"
+        method: GET
+        headers:
+          Authorization: "Bearer ${SUPABASE_ANON_KEY}"
+        expected_status: 200
+        timeout: 20s
+        interval: 3m
+        tags:
+          - production
+          - edge-functions
+          - critical
+
+      - name: "AI Models Endpoint"
+        url: "${SUPABASE_URL}/functions/v1/make-server-7dc8476e/ai/models"
+        method: GET
+        headers:
+          Authorization: "Bearer ${SUPABASE_ANON_KEY}"
+        expected_status: 200
+        timeout: 15s
+        interval: 5m
+        tags:
+          - production
+          - ai-services
+
+      - name: "FFZ Modules Endpoint"
+        url: "${SUPABASE_URL}/functions/v1/make-server-7dc8476e/ffz/modules"
+        method: GET
+        headers:
+          Authorization: "Bearer ${SUPABASE_ANON_KEY}"
+        expected_status: 200
+        timeout: 15s
+        interval: 5m
+        tags:
+          - production
+          - ffz-services
+
+  # Performance Monitoring
+  performance.yaml: |
+    metrics:
+      - name: "Website Load Time"
+        url: "https://eyemotionai.com"
+        thresholds:
+          warning: 2s
+          critical: 5s
+        interval: 5m
+        
+      - name: "API Response Time"
+        url: "https://eyemotionai.com/health"
+        thresholds:
+          warning: 1s
+          critical: 3s
+        interval: 2m
+
+      - name: "Database Query Performance"
+        url: "${SUPABASE_URL}/rest/v1/subscription_plans?select=count"
+        headers:
+          apikey: "${SUPABASE_ANON_KEY}"
+        thresholds:
+          warning: 500ms
+          critical: 2s
+        interval: 3m
+
+  # SSL Certificate Monitoring
+  ssl-monitoring.yaml: |
+    certificates:
+      - domain: "eyemotionai.com"
+        warning_days: 30
+        critical_days: 7
+        check_interval: 24h
+        
+      - domain: "www.eyemotionai.com"
+        warning_days: 30
+        critical_days: 7
+        check_interval: 24h
+
+  # Error Rate Monitoring
+  error-monitoring.yaml: |
+    error_checks:
+      - name: "4xx Error Rate"
+        url: "https://eyemotionai.com"
+        threshold: 5%
+        window: 5m
+        
+      - name: "5xx Error Rate"
+        url: "https://eyemotionai.com"
+        threshold: 1%
+        window: 5m
+
+      - name: "API Error Rate"
+        url: "${SUPABASE_URL}/rest/v1/"
+        threshold: 2%
+        window: 10m
+
+  # DNS Monitoring
+  dns-monitoring.yaml: |
+    dns_checks:
+      - domain: "eyemotionai.com"
+        record_type: "A"
+        expected_values: ["76.76.19.61"]
+        nameservers: ["8.8.8.8", "1.1.1.1"]
+        interval: 15m
+        
+      - domain: "www.eyemotionai.com"
+        record_type: "CNAME"
+        expected_values: ["cname.vercel-dns.com"]
+        interval: 15m
+
+      - domain: "eyemotionai.com"
+        record_type: "MX"
+        expected_values: ["mx1.zoho.com", "mx2.zoho.com"]
+        interval: 1h
+
+  # Database Monitoring
+  database-monitoring.yaml: |
+    database_checks:
+      - name: "Connection Pool"
+        query: "SELECT count(*) FROM pg_stat_activity"
+        warning_threshold: 80
+        critical_threshold: 95
+        interval: 5m
+
+      - name: "Table Health Check"
+        query: "SELECT count(*) FROM subscription_plans"
+        expected_min: 1
+        interval: 10m
+
+      - name: "User Growth"
+        query: "SELECT count(*) FROM auth.users WHERE created_at > NOW() - INTERVAL '1 day'"
+        track_metric: true
+        interval: 1h
+
+  # Business Metrics Monitoring
+  business-monitoring.yaml: |
+    metrics:
+      - name: "Active Subscriptions"
+        query: "SELECT count(*) FROM user_subscriptions WHERE status = 'active'"
+        interval: 1h
+        track_trend: true
+        
+      - name: "FFZ Progress"
+        query: "SELECT count(*) FROM ffz_progress WHERE updated_at > NOW() - INTERVAL '1 day'"
+        interval: 6h
+        
+      - name: "Cultural Verifications"
+        query: "SELECT count(*) FROM cultural_verification_logs WHERE created_at > NOW() - INTERVAL '1 day'"
+        interval: 6h
+
+      - name: "Daily Active Projects"
+        query: "SELECT count(DISTINCT user_id) FROM film_projects WHERE updated_at > NOW() - INTERVAL '1 day'"
+        interval: 2h
+
+  # Alert Rules
+  alerts.yaml: |
+    alert_rules:
+      - name: "Website Down"
+        condition: "website_health == 0"
+        duration: "2m"
+        severity: "critical"
+        channels: ["email", "slack"]
+        message: "🚨 EyeMotion website is down! Check immediately."
+
+      - name: "API Degraded"
+        condition: "api_response_time > 3s"
+        duration: "5m"
+        severity: "warning"
+        channels: ["slack"]
+        message: "⚠️ EyeMotion API response time is degraded."
+
+      - name: "High Error Rate"
+        condition: "error_rate > 5%"
+        duration: "3m"
+        severity: "critical"
+        channels: ["email", "slack"]
+        message: "🚨 High error rate detected on EyeMotion platform."
+
+      - name: "SSL Certificate Expiring"
+        condition: "ssl_days_until_expiry < 7"
+        duration: "1m"
+        severity: "warning"
+        channels: ["email"]
+        message: "🔒 SSL certificate for eyemotionai.com expires in less than 7 days."
+
+      - name: "Database Connection Issues"
+        condition: "database_health == 0"
+        duration: "1m"
+        severity: "critical"
+        channels: ["email", "slack"]
+        message: "🗄️ Database connection issues detected."
+
+  # Notification Channels
+  notifications.yaml: |
+    channels:
+      email:
+        type: "email"
+        config:
+          to: ["admin@eyemotionai.com", "dev@eyemotionai.com"]
+          from: "monitoring@eyemotionai.com"
+          smtp_server: "smtp.zoho.com"
+          smtp_port: 587
+          
+      slack:
+        type: "slack"
+        config:
+          webhook_url: "${SLACK_WEBHOOK_URL}"
+          channel: "#production-alerts"
+          username: "EyeMotion Monitor"
+          
+      sms:
+        type: "sms"
+        config:
+          provider: "twilio"
+          numbers: ["${EMERGENCY_PHONE}"]
+
+  # Dashboard Configuration
+  dashboard.yaml: |
+    dashboards:
+      - name: "EyeMotion Production Overview"
+        panels:
+          - title: "Website Health"
+            type: "status"
+            metrics: ["website_health", "api_health"]
+            
+          - title: "Response Times"
+            type: "timeseries"
+            metrics: ["website_response_time", "api_response_time"]
+            
+          - title: "Error Rates"
+            type: "gauge"
+            metrics: ["error_rate_4xx", "error_rate_5xx"]
+            
+          - title: "Business Metrics"
+            type: "stat"
+            metrics: ["active_subscriptions", "daily_active_users"]
+            
+          - title: "System Resources"
+            type: "timeseries"
+            metrics: ["cpu_usage", "memory_usage", "disk_usage"]
+
+---
+# Monitoring Script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitoring-script
+data:
+  monitor.sh: |
+    #!/bin/bash
+    
+    # EyeMotion Production Monitoring Script
+    
+    LOG_FILE="/var/log/eyemotion-monitor.log"
+    ALERT_THRESHOLD=3
+    CHECK_INTERVAL=60
+    
+    log() {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a $LOG_FILE
+    }
+    
+    check_website() {
+        local url=$1
+        local expected_status=${2:-200}
+        
+        response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url")
+        
+        if [ "$response" == "$expected_status" ]; then
+            return 0
+        else
+            return 1
+        fi
+    }
+    
+    check_ssl() {
+        local domain=$1
+        local warning_days=${2:-30}
+        
+        expiry_date=$(echo | openssl s_client -servername $domain -connect $domain:443 2>/dev/null | openssl x509 -noout -enddate | cut -d= -f2)
+        expiry_epoch=$(date -d "$expiry_date" +%s)
+        current_epoch=$(date +%s)
+        days_until_expiry=$(( ($expiry_epoch - $current_epoch) / 86400 ))
+        
+        if [ $days_until_expiry -lt $warning_days ]; then
+            return 1
+        else
+            return 0
+        fi
+    }
+    
+    send_alert() {
+        local message=$1
+        local severity=${2:-warning}
+        
+        log "ALERT [$severity]: $message"
+        
+        # Send email alert
+        echo "$message" | mail -s "EyeMotion Alert [$severity]" admin@eyemotionai.com
+        
+        # Send Slack notification (if webhook configured)
+        if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+                --data "{\"text\":\"🚨 EyeMotion Alert: $message\"}" \
+                "$SLACK_WEBHOOK_URL"
+        fi
+    }
+    
+    main_monitoring_loop() {
+        while true; do
+            log "Starting monitoring cycle..."
+            
+            # Check main website
+            if ! check_website "https://eyemotionai.com"; then
+                send_alert "Main website (eyemotionai.com) is not responding" "critical"
+            fi
+            
+            # Check health endpoint
+            if ! check_website "https://eyemotionai.com/health"; then
+                send_alert "Health endpoint is not responding" "warning"
+            fi
+            
+            # Check SSL certificate
+            if ! check_ssl "eyemotionai.com" 7; then
+                send_alert "SSL certificate for eyemotionai.com expires soon" "warning"
+            fi
+            
+            log "Monitoring cycle completed"
+            sleep $CHECK_INTERVAL
+        done
+    }
+    
+    # Start monitoring
+    log "Starting EyeMotion production monitoring..."
+    main_monitoring_loop

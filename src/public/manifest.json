@@ -1,0 +1,21 @@
+{
+  "name": "EyeMotion - Adaptive Visual Storytelling & Verification Ecosystem",
+  "short_name": "EyeMotion",
+  "description": "Professional film ecosystem powered by Intent-Aware AI. Transform lived experience into verified authentic visual narratives with Film From Zero (FFZ) educational framework and Cine Suite™ tools.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "oklch(0.145 0 0)",
+  "theme_color": "oklch(0.145 0 0)",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["productivity", "entertainment", "education"],
+  "lang": "en-US",
+  "scope": "/",
+  "id": "eyemotion-ecosystem"
+}

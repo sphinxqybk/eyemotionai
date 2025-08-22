@@ -1,0 +1,92 @@
+# Google Cloud Build configuration for EyeMotion
+steps:
+  # Install dependencies
+  - name: 'node:20-alpine'
+    entrypoint: 'npm'
+    args: ['ci']
+    env:
+      - 'NODE_ENV=production'
+
+  # Run tests (if available)
+  - name: 'node:20-alpine'
+    entrypoint: 'npm'
+    args: ['run', 'test:ci']
+    env:
+      - 'NODE_ENV=test'
+
+  # Build the application
+  - name: 'node:20-alpine'
+    entrypoint: 'npm'
+    args: ['run', 'build']
+    env:
+      - 'NODE_ENV=production'
+      - 'REACT_APP_ENV=production'
+      - 'REACT_APP_API_URL=https://api.eyemotion.ai'
+
+  # Build and push Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/eyemotion-web:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/eyemotion-web:latest'
+      - '.'
+
+  # Push the image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/eyemotion-web:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/eyemotion-web:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'eyemotion-web'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/eyemotion-web:$COMMIT_SHA'
+      - '--region'
+      - 'asia-southeast1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '3000'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--max-instances'
+      - '100'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,REACT_APP_ENV=production'
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  disk_size_gb: 20
+  
+# Build timeout
+timeout: '1200s'
+
+# Artifacts
+images:
+  - 'gcr.io/$PROJECT_ID/eyemotion-web:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/eyemotion-web:latest'
+
+# Build tags
+tags:
+  - 'eyemotion-web'
+  - 'production'
+
+# Substitutions
+substitutions:
+  _REGION: 'asia-southeast1'
+  _SERVICE_NAME: 'eyemotion-web'

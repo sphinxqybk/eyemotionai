@@ -1,0 +1,112 @@
+# Google Cloud Monitoring Alerts for EyeMotion
+displayName: "EyeMotion Monitoring Alerts"
+
+policies:
+  # High CPU Usage Alert
+  - displayName: "High CPU Usage"
+    conditions:
+      - displayName: "CPU usage > 80%"
+        conditionThreshold:
+          filter: 'resource.type="cloud_run_revision" resource.label.service_name="eyemotion-web"'
+          comparison: COMPARISON_GT
+          thresholdValue: 0.8
+          duration: 300s
+          aggregations:
+            - alignmentPeriod: 60s
+              perSeriesAligner: ALIGN_MEAN
+              crossSeriesReducer: REDUCE_MEAN
+              groupByFields:
+                - resource.label.service_name
+    
+    notificationChannels:
+      - "projects/eyemotion-production/notificationChannels/alert-email"
+    
+    alertStrategy:
+      autoClose: 86400s
+
+  # High Memory Usage Alert  
+  - displayName: "High Memory Usage"
+    conditions:
+      - displayName: "Memory usage > 85%"
+        conditionThreshold:
+          filter: 'resource.type="cloud_run_revision" resource.label.service_name="eyemotion-web"'
+          comparison: COMPARISON_GT
+          thresholdValue: 0.85
+          duration: 300s
+          aggregations:
+            - alignmentPeriod: 60s
+              perSeriesAligner: ALIGN_MEAN
+              crossSeriesReducer: REDUCE_MEAN
+
+  # High Error Rate Alert
+  - displayName: "High Error Rate"
+    conditions:
+      - displayName: "Error rate > 5%"
+        conditionThreshold:
+          filter: 'resource.type="cloud_run_revision" resource.label.service_name="eyemotion-web"'
+          comparison: COMPARISON_GT
+          thresholdValue: 0.05
+          duration: 300s
+          aggregations:
+            - alignmentPeriod: 60s
+              perSeriesAligner: ALIGN_RATE
+              crossSeriesReducer: REDUCE_MEAN
+
+  # Response Time Alert
+  - displayName: "High Response Time"
+    conditions:
+      - displayName: "Response time > 2 seconds"
+        conditionThreshold:
+          filter: 'resource.type="cloud_run_revision" resource.label.service_name="eyemotion-web"'
+          comparison: COMPARISON_GT
+          thresholdValue: 2000
+          duration: 300s
+          aggregations:
+            - alignmentPeriod: 60s
+              perSeriesAligner: ALIGN_MEAN
+              crossSeriesReducer: REDUCE_MEAN
+
+  # Service Availability Alert
+  - displayName: "Service Unavailable"
+    conditions:
+      - displayName: "Service down"
+        conditionAbsent:
+          filter: 'resource.type="cloud_run_revision" resource.label.service_name="eyemotion-web"'
+          duration: 300s
+
+# Dashboard Configuration
+dashboards:
+  - displayName: "EyeMotion Performance Dashboard"
+    gridLayout:
+      widgets:
+        - title: "Request Count"
+          xyChart:
+            dataSets:
+              - timeSeriesQuery:
+                  filter: 'resource.type="cloud_run_revision"'
+                  groupByFields:
+                    - resource.label.service_name
+        
+        - title: "Response Time"
+          xyChart:
+            dataSets:
+              - timeSeriesQuery:
+                  filter: 'resource.type="cloud_run_revision"'
+                  groupByFields:
+                    - resource.label.service_name
+        
+        - title: "Error Rate"
+          xyChart:
+            dataSets:
+              - timeSeriesQuery:
+                  filter: 'resource.type="cloud_run_revision"'
+                  groupByFields:
+                    - resource.label.service_name
+        
+        - title: "CPU Utilization"
+          xyChart:
+            dataSets:
+              - timeSeriesQuery:
+                  filter: 'resource.type="cloud_run_revision"'
+                  groupByFields:
+                    - resource.label.service_name
